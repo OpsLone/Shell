@@ -1,0 +1,1855 @@
+第一章 shell简介
+	 shell是什么
+	  在核心的外面，包裹着一层外壳，用来负责接收使用者输入的指令。然后将指令解译成核心能够了解的方式
+	  传给核心去执行，执行后，再讲结果传回至默认的输出周边
+	  
+第二章 部署Bash shell环境
+	输入 echo $SHELL 出现/bin/bash则是Bash
+	ls -la /bin/sh #/bin/sh->Bash
+	查看版本 echo  $BASH_VERSION
+		
+第三章 基础概念介绍
+  使用file命令可以查看类型
+      file test.log anill
+  转向输入
+    wc -l < ~/install.log  统计行数并显示
+  转向输入和输出合用
+    sort < install.log > sort.log
+    sort先从install.log读取数据，在排序转向存储至sort.log
+  利用转向输出做简易编辑
+    cat > out.sh
+  管道
+    基本 common1 | common2
+        cat sort.txt | sort
+        
+第四章 Bash Shell程序结构
+     执行script方式
+      1.切换到脚本所在目录,如果不加./bash可能会响应找不到test.sh错误信息
+        cd /root/tmp  . /test.sh 
+      2.以绝对路径方式
+        /root/tmp/test.sh
+      3.直接使用bash或sh来执行，可以不用赋执行权
+       bash test.sh  sh test.sh
+       以上3种方法，脚本执行是现行shell（父shell）会开启一个子shell环境，脚本在子shell中执行
+       脚本完毕，子shell即关闭，然后又回到现行shell之中
+      4.在现行shell执行
+        . /root/tmp/tesh.sh
+        source /root/tmp/test.sh
+      排错
+       检查语法
+        Bash -v test.sh jack
+       查看程序行
+       bash -n tesh.sh
+       追踪执行
+       bash -x test.sh
+       强调变量一定要经过声明才能使用
+       shopt -s -o nounset
+      子shell再开启子shell
+       echo $SHLVL可以查看出目前位于第几层的shell
+       测试
+            执行一次bash命令，echo $SHLVL
+            ps axf 观察内存中各层级之间关系
+      bash配置
+      登录
+        bash先执行/etc/profile 在调用~/.bash_profile
+      注销
+        bash调用~/.bash_logout
+      执行新shell
+        在图形接口执行终端程序或手动执行/bin/bash,或在编辑程序中调用Shell,会先调用/etc/bash.bashrc,在调用~/.bashrc
+      执行script（使用#！/bin/bash）
+        不调用.bash_profile,.bashrc但会检查BASH_ENV的内容，如果为非空，则执行它指定的启动文件
+            测试
+                假设BASH_ENV的内容指向bash_env.sh
+                    export BASH_ENV="/root/tmp/bash_env.sh"
+                bash_env.sh
+                    echo "HI !BASH_ENV is running"
+                然后执行tesh.sh,发现会先检查BASH_ENV变量内容，并执行它
+                结果 bash_env.sh先被bash调用执行，接着才是test.sh
+      执行script(使用#!/bin/sh)
+        不调用任何启动文件，没有其它检查环境变量的操作
+        
+第五章 基础操作介绍
+ 内置命令
+      判断是不是内置命令:type  commod (commod is a shell builtin)
+     help 
+        显示所有内置命令列表
+     help commod
+        某一个内置命令的用法
+     help -s 内置命令 
+        显示内置命令的语法格式
+     echo 
+        用来显示一行文字，默认会自动换行
+        -n 禁止换行
+        -e 特殊字符起作用，转义
+     set 
+        不加任何参数和选项，会显示所有的shell的变量和函数的内容
+        -o 显示目前bash shell 所有的属性的开关状态
+        -o commod  打开命令行修改的commod模式
+        +o commod  关闭命令行修改的commod模式
+        -v 执行script时将其所读入的每一进程序显示出来，通常用于程序排错
+     shopt  
+        设定bash shell的行为模式
+        shopt 或shopt -p 显示目前各选项的开关状态
+        -s 启用选项
+        -u 关闭选项
+        -o 使用和set -o 相同的选项来设置
+        -q 不显示开关状态，已回传状态来判断选项是开或关，0表启用，非0表关闭
+        shopt -s progcomp 启用可程序化的补全功能
+     time 
+				在指令或脚本执行完后，显示real,user,cpu3种耗用时间的统计
+		 read 
+				由标准输入读取一行数据
+				-p 提示信息，输入为变量
+				也可以一次读取一行数据放入数组中
+				read -a arr << (echo 123 45 567 77)
+				-a 指定arr为一个数组变量 
+		 eval
+				读取参数，结合成一个新指令，在进行变量代换后，予以执行
+				HIS=“history”
+				eval "$HIS > $USER.log"
+		  cd
+		  cd - 返回到前工作路径
+	命令行程序
+			命令行程序是单独存在的执行文件，执行前，shell会现在程序的搜索路径中($PATH)去寻找
+			basename
+			取得路径名称最后的文件部分
+				仿真
+						#baseName.sh
+						bn=${1##*/}
+						echo $bn
+						./baseName.sh /usr/local/bin/sftp
+			dirname 
+				取得..目录部分
+						 仿真
+						#dnName.sh
+						dn=${1%/*}
+						echo $dn
+						./dnName.sh /usr/local/bin/sftp
+			sort 
+				对文本文件每一行排序
+				-r 降序排序
+				-n 升幂排序，但以字符串的数值大小为比较的标准
+				-k 2 file  以file的第2个字段做排序的依据（字符串方式比较，-n 以数值大小比较但必须写在k前面，-nk）
+			uniq 
+				对已排序好的文件删除重复行
+				-d 挑出重复行
+				-c 计算每一行重复的次数
+			cut
+				对文件每一行抽出某一部分
+				-c2 
+					抽出每一行的第二个字符
+				-d:f1 
+					抽出各行的第一个字段
+			 paste
+				对文件以行和行方式合并
+				paste filel file2 每一行合并，默认以Tab分隔
+				paste -d'#' filel file2 合并以#分隔
+				paste -s file 每一行自己合并在一起，默认Tab
+			 tr
+				 转换或删除字符
+				 tr k K < file  将file的k换成K
+						-d k 删除字符
+						-s '''' < file 将多余的空白删除只剩一个
+			grep 
+				 显示符合样式的行
+				-i 不区分大小写
+				-v 是不包含的行显示出来
+				-I 只显示符合的行
+				-n 同-I，但显示行号
+				-q keyword file 若file包含keyword则返回0,否则传回非0
+				
+	执行多个命令
+			用分号隔开，各指令执行结果不会影响其它资料是否要执行，各指令都会执行，但不确保是否成功
+			用&&隔开 前一个成功执行才接着执行下一个
+			用||分开  当第一个成功就不会接着执行
+			弄成一个数组用（）或{}将命令包含起来，用分号隔开
+				但是（）会开启一个子shell,而{}会在本shell中执行，并且在左右需要有一个空格
+	记录命令执行过程
+		 script[日志文件]，如果不指定自定义的日志文件，默认会把数据存在typescript这个文件
+		 
+第六章 变量与字符串操作 
+	 bash没有所谓的数据形态，在默认情况下不会区分，除非用内置命令declare指定，
+	 在bash shell 只有一种数据形态：以字符组成的字符串
+	 命名
+			会区分大小写
+	 设定变量
+			变量名称=值  a=1 or a="1"
+			最好把字符串用双引号或单引号括起来
+			等号的两边不可以有空白
+			若等号右边含有空格，需用引号括起来
+	 为了怕打错变量名称，造成排错上的困难，可以规定变量一律要先经过设定的程序才能使用
+	 在脚本加入shopt -s -o nounset
+	    -s打开选项 -o 是指可用set -o设定的选项 nounset 表示变量一定要经过设定，才能使用
+	取值
+			方法是在变量名称前加$
+			也可以${name}
+			若变量后面接有其他英数单词或底线，须用{}隔开$和变量名称
+			若后面不是则不必使用{}隔开
+			但要显示$符号得使用\$转义符,或单引号包含
+	取消清空变量
+			如果该变量的属性是只读的话不能删除
+			使用uset 变量名称取消变量名称
+			-v 表示取消的是变量
+			-f 表示要取消的是函数
+	变量和引号
+			在双引号可以进行3个操作
+				替换变量
+				替换命令执行结果
+				替换算术运算结果
+			单引号的作用是形成一个所见即所得的字符串，不会进行任何替换变量的操作
+	变量的作用范围，仅在各自的shell环境中才生效，若要该script在当前shell中执行，应使用.或source
+	环境变量
+			当子shell产生时，他会继承父shell的环境变量等条件，
+			只要变量变成环境变量就能为子shell取用，可以使用export或declare -x 
+	  内置
+			IFS 定义字段分隔字符默认值为：空格符、tab字符、换行字符
+			$# 参数个数
+			$@ 代表所有参数，但表示各位置参数组成的串行，如 test.sh a b c
+               则内容为“a”"b" "c"	
+            $* 与$@作用相同但表示一个字符串，如test.sh a b c
+					则内容为“a b c ”
+			$$ 目前bash shell 进程号
+			$? 上个命令执行结束后的传回值，通常0代表成功，非0代表执行有误
+			$! 上个后台程序的进程号
+			$_ 3种作用
+					script绝对路径 例如/bin/bash
+					上一个命令执行最后一个参数
+					检查邮件时$_值为邮件文件名
+		调整变量的属性
+			只读变量：使用readonly命令
+			定义只读变量方法
+					readonly  变量名称
+					   显示目前具有只读属性的变量列表 readonly readonly -p
+						 设定函数不可修改 -f 函数名称
+						 设定-a后接的变量名称是只读的数组 -a 数组变量
+					declare -r 变量名称
+						      -x 设定环境变量
+	  自定义环境
+			.bash_profile 登录时，越单纯越好，放置适用的命令，搜寻路径及环境变量
+			.bashrc     执行新shell时
+			.bash_logout 注销时,默认没有
+		数组
+		  建立数组:a[0]=15
+			取得某个元素的值：${数组[索引值]}
+			取出所有元素：
+					echo ${A[@]}
+							得到元素会以空白隔开
+					echo ${A[*]}
+					    得到一整个字符串
+			取得数组元素的个数
+				${#数组[@]} 或 ${#数组[*]}
+				若元素是字符串
+					${#数组[索引]}
+		Here Document
+			基本语法：
+					command << 标记
+				  .....
+				  .....
+				  标记
+			变量替换
+			 在输出内容中如果有变量，在bash转向前，会先替换变量值
+			控制格式
+			 关闭变量替换功能
+				在标记加上单引号 ‘EOF'
+				去掉每行之前的TAB字符 -'EOF'
+			多行批注
+			  ： <<EOF :代表“什么都不做”的空命令，这个区域在script中，bash会忽略不执行，因此达到批注的效果
+			 利用Here Document生成其他文件，运用
+			 cat<<EOF >file.log
+
+
+第七章 高级变量
+    测试变量"存在与否"的基本用法
+      语法 ${待测变量-默认值}
+      判断条件 若变量不存在，则符合判断，以传回默认值作为初值
+    测试变量"不存在"或其值为空："传回"一个默认值
+			 ${待测变量:-默认值}
+			 如果变量不存在或其值为空，则符合判断，以传回默认值作为初值
+		若变量条件式中只有-这个符号，则只做变量"存在性"的判断
+		若变量条件式中使用：-这个符号，除了判断变量的"存在性"之外，也会判断是否为空值
+		 特殊运用
+			[ -n ${DEBUG:-} ] && set -v
+				-n 测试后接的变量是否有值（测:不空），若非空,则传回真值
+				${DEBUG:-}就是-n要测试的对象，这里:-本应放置默认值的地方却没有任何东西，表示故意要让
+				默认值为空值
+				如果DEBUG非空值，那么[-n]条件测试就会成立，接着执行逻辑AND的下一个指令:set -v
+				于是进入查错模式
+	测试变量"不存在"或其值为空:给变量设一个默认值
+		   ${待测变量:=默认值}
+		   若变量不存在或其值为空，则符合判断
+	测试变量"不存在"或其值为空:提示错误信息
+				${待测变量:?提示信息}
+			  若变量不存在或空值则显示变量名称和:?后面的提示信息，并立即停止执行
+			  条件式的用途
+			  确保某变量值一定要存在，如果该变量的值为空值，就显示预先准备好的错误信息
+	测试变量"存在性"
+		     ${待测变量:+真值}
+		     若变量存在且其值为非空，则符合判断
+		     a='a'
+		     r=${a:+'true'}
+		     echo $r
+		     example
+						fgrep.sh
+						exec grep -F ${1+"$@"}
+						-F 表示使用一串固定的字符串(可用换行字符分开）
+						${1+"$@"} 若$1存在（find  keyword）则传回所有参数，这表示可以搜寻多个文件
+						用法
+						 sh fgrep.sh Mem /proc/meminfo /root/test.txt
+						 最后exec执行的指令是
+						    grep -F Mem /proc/meminfo /root/test.txt
+					上述测定方法不用“:”则只测试存在性，不测空值
+	取字符串切片、字符串长度
+		 语法
+				${变量:位置起点}
+				${变量:位置长度:长度}
+			测试IFS变量组成
+					echo "_${IFS:0:1}_"
+					echo "_${IFS:1:1}_"
+					echo "_${IFS:2:1}_"
+	取部分位置参数
+			${@：起点}
+				${@:1} 取得所有参数
+			${@:起点:个数}	
+			  ${@:2:2}
+	计算字符串长度
+		  1.${#变量名称}
+		  2.expr length"str"	
+					str='here'
+					len=${expr length "$str"}
+					echo "$len"
+		  3.expr "str" :'.*'
+					len=${expr  "$str":'x*'}
+	由字符串前面对比，删除相符者
+			由前面对比、删最短的
+			 ${变量#样式}
+					r=${"/usr/sbin/sbin"#/*/}  
+					   out : sbin/sbin
+			由前面对比、删最长的
+				${变量##样式}
+			有字符串后面对比，删除相符者
+			由后面对比，删最短的
+			  ${变量%样式}
+			由后面对比，删最长的
+			  ${变量%%样式}
+			取代或删除部分字符串
+			 只替换第一个对比符合的字符串
+			 ${变量/样式/替换字符串}
+			 替换全部对比符合的字符串
+			 ${变量//样式/替换字符串}
+			把对比符合的字符串删除
+			 只删一个
+			 ${变量/样式}
+			 删除全部
+			 ${变量//样式}
+			样式在句首或句尾
+			 句首 ${变量/#样式/}
+			 句尾 ${变量/%样式/}
+	取变量名称列表、数组索引列表
+			取变量名称列表
+				${!开头字符串@}
+				${!开头字符串*}
+				把所有以指定字符串开头的变量名称列出，各变量之间，用$IFS定义的第一个分隔字符(通常是空格符)隔开
+			取数组索引列表
+				${!数组变量[@]}
+				${!数组变量[*]}
+				使用扩展式使用@,并且出现在双引号中，则其传回的不是一个字符串，而是将索引值各视为单独的字符串
+				 “${!ar[@]}”
+	命令替换
+			新式 变量名称=$（命令）
+			旧式 变量名称=`命令`
+			可以包含2个及以上的指令
+			  ${cd ..;pwd}
+			也可以包含其他命令替换
+			  $（du -s$（pwd）） 
+			  example 
+						tmp=$(ifconfig eth0 | grep 'inet addr')
+						r=${tmp/inet addr:/}
+						ip=${r/ Bcast*/}
+						echo $ip
+	算术扩展
+		  语法$((算术式))
+		  
+第八章 算术运算
+	bash算术运算
+	算术扩展     $((算术式))              r=$((2+5*8))
+	expr         expr 算术式              r=`expr 4 + 5`
+	$[]          $[算术式]                r=$[ 4 + 5 ]
+	declare      declare -i 变量=算术式   declare -i r=8+16
+	let          let 算术式               let r=8+16
+	  算术扩展 
+				$((表达式))
+						表达式有变量，该变量名称之前最好不要加上$这个符号
+						echo $((12+i))
+		expr 
+			 r=`expr 4+5`	如有特殊符号要用\予以转义
+		使用$[]	做算术运算
+		   r=$[算术式]
+		declare、let		
+		 declare -i I
+		 let  "i = i + 5"
+
+第九章 流程控制
+	每一个命令执行后，都会传回一个结束状态值
+	执行成功返回0，执行失败，返回非0值
+	执行发现命令不存在则传回值为127，命令存在但没有执行权，返回126
+	某个命令执行失败，产生严重的信号你，则其传回值为128+n
+	内置变量$?,用来存储每个命令执行后传回的状态值
+	if语法
+		if 条件测试；then
+					命令区域
+		fi
+	  
+	  if 条件测试；then
+					命令区域
+		else 
+				命令区域2
+		fi
+	条件测试
+		执行某一个命令的结果
+		    命令可包括管道命令，command1|command2
+		    if grep -q "rm"	fn.sh 寻找fn.sh文件里是否含有关键词rm -q表示不显示，仅借助$?来传回执行结果 
+		传回某一命令执行结果的相反值
+		   其形式！ 命令2者之间要有空格符隔开，
+				if ！ grep -q "rm" fn.sh  !表示要传回相反的结果，如果找不到关键词，就传回0，找到了就传回1
+		使用Bash关键词'[[' . ']]'组成的式子：[[判断式]]
+		    判断式会传回真假值，传回0为真，非0为假
+		    [[ 条件 ]] 条件前后都需要一个或以上的空格符    
+		    if [[ a > b ]]
+	  使用内置命令test判断式
+	    可传回判断式的结果，真值传回0，假值传回1
+	    if test "str" \> "xyz"
+	  使用内置命令[]
+	     [ 判断式 ]和test的用法是相同的，两者可改写互换
+	     if [ "str" \> "xyz" ]
+	  使用 -a -o 进行逻辑组合
+	    -a  “且” -o "或"
+			[ -r filename -a -x filename ]  如果filename1可读且可执行，则为真
+			[ -r filename -o -x filename ]  如果filename1可读或可执行，则为真
+	  commod1 && command2
+	    &&称为逻辑的AND其运作方式，如果"命令1"执行结果为真，才会执行"命令2"，如果2个都为真，则传回值0，否则传回假值1
+	    if grep -q "rm" fn.sh && [ $a -lt 100 ]
+	    &&的特性经常拿来当做是一种隐性的if语法
+	    [ -z "$PS1"] && return 
+	    先判断$ps1变量值是否为空，如果是，执行return
+	  commod1 || command2 
+	     ||称为逻辑的or其运作方式如果命令1执行结果为假，才会执行命令2，如果2个一个为真，则传回真值0，否则传回假值1
+	      if grep -q "rm" fn.sh && [ $a -lt 100 ]
+	  && 和 ||合用
+			[ -n ${DEBUG:-} ] && set -v || set +v
+			-n测试DEBUG是否有设非空值，如果有，表示要进行排错，接着执行逻辑and的下一个指令
+			set -v如果无则不进行排错，而改执行逻辑OR的下一个指令
+			set +v它会显示程序代码的功能关闭
+		在上述的条件测试的方法中，[[ ]]和test,[]的意思和用法是相近的，但[[ ]]比test和[]更自由一点，
+		因为[[ ]]不必担心某些bash特殊字符对运算符的影响，如转义符，<,>,&&,||等都可以自由使用，不必使用转义字符
+		除[[]]之外，在bash中，(())也不必理会上述提到的特殊字符的影响，在[[ 判断式 ]]中，如果使用==或!==且在这两个运算符右方的字符串
+		没有加上单引号或双引号，是不同的含义
+		 [[ $a == ???]] 用$a的值对比样式???
+		 [[ $a == "???"]] 是判断是否和字符串相等
+		 可以使用[[ $a =~ 样式 ]]的方式来进行匹配
+	条件判断式的真假值
+		 文件属性
+				-a file  如果文件存在
+				-b file  如果文件存在，且为块设备
+			  -c file  如果文件存在，且为字符设备
+			  -d file  如果文件存在，且为是目录
+			  -e file  如果文件存在
+			  -f file  如果文件存在，且为一般文件
+			  -g file  如果文件存在，且设立了set group id 属性
+			  ...(h,k,p,r,s,t,u,w,x,O,G,L,S,N,-nt,-ot,-ef)
+	  字符串属性
+		    -z str 如果字符串为空字符串
+		    -n str 如果字符串不为空字符串
+		    str1 == str2 如果两个字符串相同
+		    str1 == str2 如果两个字符串相同
+		    str1 != str2 如果两个字符串不同
+		    str1 < str2  如果str1小于str2
+		    str1 > str2  如果str1大于str2 
+		    使用[]需用\转义符，如果使用[[]]则不会
+		    对比字符串是，最好把变量名称用双引号含括，以免变量内容为空时造成语法错误
+		    可以使script在其它shell运行，如Bourne shelll可以使用[ X"$name"]的技巧来避免空值的问题
+		    这个X可以换成其它英文字母
+		 算式条件判断式
+				参数1 -eq 参数2   相等
+				      -ne        不相等
+				      -lt        小于
+				      -le        小于或等于
+				      -gt        大于
+				      -ge        大于或等于
+				  [ $a -eq 100] 
+		 Bash选项的条件判断式
+			   -o set的选项名称  如果选项是开启状态
+			  set -o 
+			  [ -o  history]
+	  case条件判断
+	    语法
+					case 待测项 in
+								样式串行1） 命令区域1;;
+								样式串行2） 命令区域1;;
+								....
+								*)命令区域;;
+					esac
+				shopt -s nocasematch 可以忽略大小写
+		高级样式
+			   bash的样式可以由字符串，通配符，字符集合，项目分隔符组成
+			   只要用|隔开
+					shopt -s extglob那支持几种高级样式对比
+					   ？ 如果符合0或1个括号里的样式串行，算对比符合
+					    * 如果符合0个以上括号里的样式串行
+					    + 如果符合1个以上括号里的样式串行
+					    @  如果符号括号里样式串行的其中一个
+					    ！ 只要不是出现在括号里的样式串行
+							j@(ac|xy|pq)k|john|joe）
+				  高级样式也可以在[[ ]]条件判断中使用
+				  [[$cmd == @(delare|typeset)]]   	   
+		for循环
+			运作方式，是将串行元素一一取出，重复执行包含的do和done之间，直到所有元素取尽为止
+			串行是一些字符串的组合，用$IFS所定义的分隔字符隔开，这些字符串称为字段
+			语法
+					for 变量 in 串行
+					do 
+							命令区域
+					done
+			  for i in  1 2 3 4 5 
+			  do
+			     echo $i 
+			  done
+			  “in 。。。"可以省略不写，bash会由命令行读取各个参数，
+			    轮循代入变量，作用同以下用法
+			    for 变量 in $@
+					经常用于分割字符串行，取出字段元素值
+					 IFS=":"
+					 PL="root:x:0:0:root:/root:/bin/bash"
+					 for f in $PL 
+			  另一种用法：for((初始条件;终止条件;改动项)) 
+			  for((i=1;i<=10;i=i+1))
+			  无限循环
+			  for((;1;))
+		while循环
+		    语法 while 条件测试
+		            do 
+		              命令区域
+		            done
+		     先进行条件测试，为真进入循环
+		     while((i<=10))
+		    使用while循环，读取文件内容  	  
+		      while read line
+		      do 
+		        echo $line
+		      done < test.log
+		      从test.log读取数据，放到line变量中，并把该行数据显示出来
+		    无限循环
+		      while((1))#[1]
+		      while true
+		      while :
+		until循环
+		    until循环是测假值
+		    语法
+		        until ((i>10))
+		    无限循环
+						until false
+						until ((0))
+		select命令
+		  可以建立简单的列表，其语法结构和for一样
+		  语法
+		     select 选项变量 in 串行
+		     do
+		       命令区域
+		     done
+		    select命令建立一个列表，选项即串行中的各个字段，列表提示符号
+		    由ps3定义，默认值为#?,并且会给各个选项一个编号，由一开始递增
+		    当键入编号，选择某一选项时，该选项的内容就设值给选项变量,而键入的
+		    编号值则放入REPLY变量中,想要结束列表，可在命令区域输出break或C-d
+		    列表的选项可以自定义
+					menu="/ /root /etc /home /usr/local /var/log"
+					select f in $menu
+		break 和 continue 
+		  break 执行时会跳出一层循环，如果想要跳出多层循环，可在break之后加上层数n(n>=1)
+		  continue 只会跳过本次循环，重新由下一个循环开始执行，可在continue之后加上层数n
+
+第十章 函数
+		函数就是一些命令的集合，使用一个名称做代表，称为函数名称，函数名称的命名规则和变量相同
+		最大作用是可以让程序模块化
+		语法
+				function 函数名称(){
+						 命令区域
+				}
+				函数名称(){
+					命令区域
+				}
+				function 函数名称{
+ 						命令区域
+				}
+				调用方法
+					直接写函数名称
+				在执行函数间bash会建立一个特别的变量FUNCNAME,值为函数名
+				如有需要可以使用unset -f 函数名称 取消函数定义
+		函数结束状态
+				执行函数时，函数中最后一个命令的传回值代表函数的结束状态，执行函数
+				如遇到return命令就立即结束，回到调用函数的下一个命令，此时函数传回值为0
+				可以return指定不同的传回值 return num
+		函数与变量的作用范围
+			  函数的作用范围
+					函数仅在定义shell环境中有效，Bash执行函数时并不会另外再开启一个子shell
+					如果想传递函数给子shell使用，可以使用export -f 函数名称
+				变量的作用范围
+				  如没有特别设定变量属性，那么自定义的变量称为全局变量，作用于整个脚本文件
+				  如变量仅在函数执行器需要，使用local将变量设为该函数私有，全局变量适合作为传值给函数运用
+		位置参数
+				传递参数
+				  $0 文件名
+				  $1.$9..${n}，第一个位置参数，如果超过第9个，要用${n}来表示
+				  $# 代表参数的个数
+				  $@ 代表所有以空白隔开的参数
+				  $* 代表所有参数所组成的字符串
+				  当函数借用命令行的位置参数时，原位置参数值会被暂存起来，等到函数执行结束在会复原其值
+				  传参给函数的语法
+						函数名称 参数1 参数2 参数3
+						函数名称及各参数之间用空格符隔开
+						getline{
+								...
+						}
+						file=$1
+						getline $file
+	    命令行位置参数
+			语法
+				script 参数1 参数2 ..
+				其参数列表和特殊变量"$#,$@,$*"与位置参数意义相同
+				注：
+					$# 经常用来判断使用者提供的参数是否足够
+					判断参数是否为2个，不是就告知用户如何执行本程序，然后exit结束程序
+					if[ $# -ne 2];then
+						echo “使用法:./$0 参数1 参数2”
+						exit 1
+					fi
+	    移动位置参数
+			内置命令shift可以往前移动位置参数的值
+				语法 shift n
+			其中n是正整数，代表要往前移动的次数，n可以省略不写，代表移动1次，执行shift n
+			$(n+1)的值会放入$1
+			以执行shift命令来说，不指定次数，$2的值放入$1，如一直执行，最后会把所有的位置参数清空
+			example
+				echo “\$@的初值: $@”
+				while shift
+				do 
+					[ -n "$1" ] && echo "shift 1次， \$@的变化:$@"
+				done
+				显示所有的位置参数，通过while循环如果shift执行成功，进入循环
+				判断位置参数$1如果非空，则显示移动过后的位置参数
+		指定位置参数值		
+			有时为了特殊目的，会故意指定位置参数的值，称为重置(reset),内置命令set会可以达成这个目的
+			set  1 2 3 4 
+			for p in $@
+			do 
+					((i++))
+					echo "第$i个位置参数\$$i = $p"\
+			done
+			set命令设定位置参数的值，这道指令的效果会依位置顺序，将对应的值依次传给$1....$n
+			一旦用了set重置位置参数，其原值就会消失以新值取代
+			如果要一次重置所有位置参数，使其值为空，可执行 set--
+			在程序中运用位置参数传递参数值给函数时，原有的命令行参数会被保存
+			其值不会变，当函数执行结束在恢复，命令行参数值不受调用函数的影响
+			 pars(){
+						echo "共有$#参数传入"
+						echo “参数值:$@”
+			 }
+			 pars 1 2 3 
+			 echo "传入$@" 
+			 sh script.sh a b  c out  3  123  a b c
+		去命令行的选项和参数
+		 	 ./name.sh -u jack -a -h
+		 or	./name.sh -a -u jack -h
+		 	  如果要取得这些选项和参数，使用前面的位置参数也是可以的
+		 	  但是拿到后需要做很多的条件判断才行
+		 	  解决这样的问题，可改用内置命令getopts
+		 	  语法
+						getopts 选项行 选项变量
+						选项行有各选项的单一字符组成 
+						 如 u:ah 某一选项在字符后方接上:,则表示该选项需要提供一个参数
+						 如u后面没有提供额外的参数，那么bash就会显示"option requires an argument -- u"
+						 若不想出这种错误，可在u前面加上":"如 :u:ah
+						选项变量的作用是getopts由命令行取得选项，把它放入选项变量中。如果该选项需要额外的参数
+						参数值会放入OPTARG中
+						  while getopts :u:ah opt ; do
+								case $opt in
+										u)
+												echo "提供了选项u和参数:$OPTARG";;
+										a)
+												echo "提供了选项a";;
+										h)
+												echo "提供了选项h";;
+										*)
+												;;
+									esac
+							done
+					./opt.sh -u jack -a -h
+	  
+	    建立函数库
+				将一些函数抽出来集中存放成文件，这个文件称为函数库，以后只要调用这个函数库，就可以加载这些函数备用
+				为了避免和其它函数同名，在命名函数式，函数名称第一个字符使用_(下划线)，这表示系统的函数或变量名称
+				也就是私有化
+				#####mylib.sh
+						_getip(){
+											local tmp r ip #函数变量设为私有
+											[ -z "$1" ] && return #判断位置参数$1是否为空，接收网卡名称，若为空立即结束函数
+											FUNREPLY=()#建立数组变量，传回IP字符串
+											tmp=$(ifconfig $1 | grep 'inet addr') #找出网卡名称
+											r=${tmp/inet addr:/}
+											ip=${r/ Bcast*/}
+											FUNREPLY=($ip)#将找到IP设为FUNREPLY的第一个数组元素，作为函数返回值
+									}
+				函数库建立好后应该放在某个目录，如家目录，如给系统用，则放在/etc下
+				调用方法
+				. 路径/函数库文件名
+				source 路径/函数库文件名
+
+第十一章 转向
+	转向是说原本由标准输入读取数据的，改由其他文件读取，原本应把结果显示在标准输出，改输出到其他文件
+	在这个过程中会涉及文件代码的概念，操作系统默认指定3个文件代码，0标准输入(stdin),1标准输出(stdout)
+	2标准错误(stderr)
+	在各个语法zhong,“<”代表转向输入，如果"<"左方省略文件代码，默认为0，">"转向输出，如果左方省略文件代码，则默认为1
+	即标准输出，但大都不能单独使用，必须和Bash一起使用
+	操作文件
+		开启文件
+			fd<>文件
+				exec 6<>test.txt 打开文件并指定文件代码
+		复制文件
+			复制转向输入的文件代码m存放文件代码n,使n连接至m
+			n<&m
+			复制转向输入的文件代码m存放文件代码n,使n连接至m
+			n>&m
+				exec >&6 
+					同于exec 1>&6 将标准输出连接到文件代码6，凡是原本出现在标准输出的内容，会转存至文件代码6
+				cat <&6
+				  同于cat 0<&6 将文件代码6的内容，转向至标准输入，而由cat把内容显示出来
+				exec 5<&0
+				  复制标准输入(0)，存成文件代码5，即建立文件代码0的连接，就是做标准输入的备份
+				  一旦备份标准输入后就可以对标准输入进行操作，如转向输入，操作完毕，接下来应该还原标准输入
+				  exec 0<&5 5<&-
+						将存储在文件代码5的标准输入还原，并关闭文件代码5，这样一来，原标准输入的功能就不会受到影响
+						也可以分成2行来写
+				example
+								openf1.sh
+									# 想要读取的数据文件mail.log
+									datafile='mail.log'
+									# 开启文件datefile并指定文件代码3
+									exec 3<>$datafile
+									# <&3等同于0<&3 意思是复制文件代码3，使标准输入连接到3，read就可以读取到3所开启的文件dataf1
+									while read <&3
+									do
+									# 显示读取的数据行，因为read命令没有指定数据要放入哪一个变量，因此把数据放入变量REPLY 
+											echo $REPLY
+									done
+									# 关闭行4所开启的文件
+									exec 3<&-
+                openf1.2.sh
+                  datafile='mail.log'
+									# 备份标准输入，放入文件代码3
+									exec 3<&0
+									# 对标准输入进行输入转向在这个命令后只要是读取操作，其来源皆改到datafile
+									exec < $datafile
+									# 将datafile内容读出，并显示
+									while read
+									do 
+											echo $REPLY
+									done
+									# 还原标准输入，关闭文件代码3,交回占用的系统资源
+									exec 0<&3 3<&-
+		关闭文件
+		 关闭转向输入文件
+		 fd<&-
+			exec 6<&- 关闭文件代码6
+		 关闭转向输出文件
+		 fd>&-
+		   exec 5>&- 关闭文件代码5
+	转向的用法
+		  转向输入
+					fd<文件  使用文件做输入，指定文件代码为fd,左方省略fd:fd默认为0,指的就是标准输入转向
+					wc -l < /var/log/error.log 转向输入后，标准输入和文件error.log建立连接，wc改由error.log读取行数
+					但wc不知道它是由哪里取得数据的，反正wc默认就是标准输入读取数据就对了
+					<左方文件代码不空
+					exec  6< /var/log/error.log
+					wc -l <&6   使用文件代码6做输入，输入来源是error.log 由文件代码6供应wc数据行
+			转向输出
+			    fd>文件  使用文件做输出，指定文件代码fd
+			    如果文件不存在，会建立一个新文件，但如果存在则文件内容会被清空
+			    可以使用set -o noclobber 或 set -c 指令关闭覆盖文件的默认操作
+			    >省略左方fd,则fd默认为1，指的就是标准输出转向
+						  >test.txt 制造空文件
+						：> test.txt :为bash的空命令，转向输出的效果
+			      存储命令执行的输出
+			      ls > dirs.txt 将ls的输出转向存储在文件dirs.txt
+			      >左方文件代码不空
+			      exec 6> out.txt   开启文件out.txt作为输出，文件代码6
+			      echo 'Hello world!' 1>&6 将echo原本会显示在标准输出的信息，存储在文件代码6
+					  fd>|文件
+					  同>但>|不理会noclobber选项，只要文件存爱，都会强制覆盖，清空文件内容
+			转向附加
+				fd>>文件
+				如果文件存在它会把输出写在文件后面，并不清空文件内容
+			标准错误伴随标准输出做转向
+				&>文件
+				>&文件
+				ntpdate time.stdtime.gov.cn &>dev/null 将错误信息输出到null中，屏幕不显示错误信息
+				&>与>文件 2>&1作用相同
+			Here Document转向
+			  exec 6<<EOF 
+				line1
+				..
+				EOF
+				while read <&6
+				do 
+				   echo  $REPLY 
+				done
+				
+第十二章 陷阱触发
+	能捕捉特定信息，并能做出反应机制，称为trap(陷阱触发)
+		  信号
+		     进程编号PID
+		     自动获取PID
+		        sh getpid1.sh  进程名 
+									#! /bin/bash
+									if [ $# -ne 1 ]; then
+										 echo "Usage: $0 进程名称关键词"
+										 exit 1
+									fi
+									proc=$1
+									pid=$(ps auxw | grep $proc | grep -v grep | grep -v $0 | awk '{print $2}')
+									if [ -n "$pid" ]; then
+										 echo $pid
+									else
+										 echo '找不到此进程'
+									fi
+      信号列表
+					系统定义的信号，可用“kill -l或trap -l”列出,每个信号都有一个特定的数字代码，
+					信号名称以SIG开头可以省略不写，信号名称部分大小写皆可，在传递信号时，可使用数字代码
+          kill -l number 
+          kill -HUP number 
+          kill -SIGHUP number
+      传送信号的方法
+					使用内置命令kill,可传送信号给进程
+					kill -信号 进程编号
+					kill -s 信号 进程编号
+					kill -n 信号 进程编号
+				“-信号可使用信号代码或信号名称，kill可后接多个进程编号，kill会把指定的信号都传送给这些进程”
+				  如省略“-信号” 则使用默认SIGTERM信号给进程
+			trap运用
+				语法
+					1.trap"触发指令"信号串行
+					向shell注册信号，只要系统产生特定的信号，trap指令就会触发，并执行命令中的"触发指令"
+					trap 'echo "收到ABRT.."' ABRT 注册一个ABRT信号，只要系统出现ABRT信号，就执行echo 
+					$ kill -ABRT $$ #像目前shell发出ABRT信号，$$代表目前shell的进程编号
+					收到ABRT
+					Bash会对trap指令读取2次，一次读取trap指令内容时，一次执行触发指令是，因此最好使用单引号包含'触发指令'
+					以免Bash对它进行变量替换等动作，影响触发指令的正常执行
+					2.trap - 信号串行
+					 如果没有触发指令，而是-或空白，则可恢复信号串行原本的作用
+					 trap '-' ABRT 
+					3.trap '' 信号串行
+					忽略系统发出的"信号串行"
+					如果触发指令的部分是空字符串，那么shell会忽略这些信号串行，不做任何反应
+					如忽略Ctrl+c可写成trap '' INT，KILL和STOP这两个无法用trap捕捉，也无法忽略
+					4.trap -p
+					列出目前trap向Shell注册的信号列表
+					
+第十三章 sed和awk入门
+	正则表达式
+		. 一点代表一个字符
+		^ 在行首
+		$ 在尾部
+		[...] 字符集合代表字符串行中的一个字符
+				[A-Z]/[a-z] 一个大(小)写字母
+			  [0-9] 一个数字
+			  [^A-Z] 除了大写字母之外的一个字符
+			  [^a-zA-Z] 一个非英文字母的字符
+			  [^a-zA-Z0-9] 一个非英文字母，且非数字的字符
+			  ^ 出现在括号里的第一个位置，代表"非/不是"
+		* 出现0个以上，代表左邻的字符有0个或0个以上
+		\{...\}指定符合的个数，指定左邻字符的个数
+		\(...\)把比对符合的字符串暂时保存起来,若要提取保存的字符串可用位置参数
+		\1代表第一个保存的字符串，\2代表第二个
+	sed的用法
+	  sed并不会更改文件内容sed的工作方式是读取文件内容，读取文件内容，经流编辑后
+	  把结果显示到标准输出，因此想要存储sed的处理结果，运用转向输出将结果存在其他文件
+	  工作模式，比对每一数据行,若符合样式，就执行指定的操作
+	  语法 sed '样式命令' 文件
+	  如果文件中某一行符合样式，就执行指定的sed命令,如删除(d)或取代(s)
+	  样式用一对//含括，表示寻找，也可以指定数据行的范围
+		
+		用法
+				1.删除把某一段范围的数据行
+				sed '1,4d' file #把1至4行数据删除，剩下的显示出来，d是删除命令
+				2.把含有样式的数据行删除
+				sed '/La/d' file #把含有La的行删除，剩下的显示出来，其中//代表搜索之意
+				sed '/^$/d' file #删除空白行
+				sed '/[0-9]\{3\}/d' file #把含有3位数的行删除
+				3.把不含样式的数据行删除 
+				sed '/La/!d' file #把不含有La的行删除
+				4.把含有样式的数据行显示出来
+				sed (-n) '/La/p' file #sed默认也会显示不符合的数据行,-n会抑制sed显示出其他资料行的默认操作
+				只显示符合样式的数据行
+				5，取代
+				sed -n 's/La/Oo/p' file #s是取代的意思，第一对//中含括的字符串是搜索的目标，第二对//
+				是置换的字符串，上面指令只会更换一个出现的La,如全部置换，应加上全局的命令g
+				sed -n 's/La/Oo/gp' file
+				sed -n 's/La//gp' file #置换为空字符串，也就是删除
+				sed  's/^...//' file # 把每一行开头的3个字符删除
+				sed  's/^...$//' file # 把每一行末尾的3个字符删除
+	      sed -n 's/\{La\}/\IOo/p' file # 把每一行开头的3个字符删除,把找到的La存起来
+	      用\I取回来再使用，若数据行含有La字符串，则第一个出现的La会置换成LaDo然后显示这些含有La
+	      的数据行
+	      sed -n '/AAA/s/234/567/p' file #找到符合样式的数据行，在进行取代，找到含有AAA那一行，将234换成567
+	      sed -n '/AAA/,/DDD/s/B/567/p' file #将AAA到DDD那几行，皆将其中的B换成567	
+				 
+	awk
+			awk是一种可以处理数据，产生格式化报表的语言，awk的工作方式是读取数据文件，将每一行数据视为一条记录
+			每笔记录以字段分隔符分成若干字段，然后输出各个字段的值
+			example 取得所有进程的pid
+					ps	auxw | awk '{print $2}'
+				awk对每一条记录，都会套用一个样式{操作}，如果该行符合样式，就执行指定的操作样式或操作之一，可以省略
+				如只有样式，表示要显示符合样式的数据行，如只有操作，表示对每一数据行都执行该项操作
+				常用的作用格式
+					awk "样式" 文件：把符合样式的数据行显示出来
+					awk '{样式}' 文件：对每一行都执行{}中的操作
+				  awk '样式{操作}' 文件: 对符合样式的数据行，执行{}中的操作
+			awk '/La/' file#显示含La的数据行 
+			awk '{ print $1,$2 }' file#显示file每一行的第1和第2个字段
+			awk ‘/La/{ print $1,$2}’file#将含有La关键词的数据行的第1及第2个字段显示出来
+			awk -F: '/^ols3/{ print $3,$4}' /etc/passwd#使用-F指定：为分隔符，账号ols3的第3和第4显示出来
+			awk -F: 'BEGIN{OFS="+++"}/^ols3/{ print $1,$2.$3,$4,$5}' /etc/passwd 	#以：为分隔符，+++为输出字段分隔符，将ols3的第1-5显示出来
+			  BEGIN{}区域指示awk一开始先做初始化操作，即设定OFS="+++"。变量OFS的作用是存储输出字段的分隔符，接着寻找ols3账号行，找到打印1-5栏
+			  并用+++隔开
+		  example  取得网卡地址
+							$ ifconfig | grep 'inet addr:' | grep Bcast | awk '{print $2}' | awk -F: '{print $2}'
+              取得设备名称
+              cat /proc/net/dev | awk -F: '/eth.:|ppp.:wlan.:/{print $1}'
+								本例中-F把分隔字符设为:而且采用多选一的样式/eth.:|ppp.:|wlan.:/,样式意思是设备名称可以是eth0:、ppp1:、wlan1:3个其中之一
+								一旦找到符合样式字符串后去掉：取其中第一个域值
+							取得系统内存大小
+							cat /proc/meminfo | awk '/MemTotal/{print $2}'
+              将某个文件字段调换
+								a,b,123,4
+								Tmpf=/tmp/tmp.$$
+								cat file | awk -F,'BEGIN{OFS=","}{print $1,$4,$3,$2}' >$Tmpf#将字段分隔符和输出分隔符皆设为，
+								mv -f $Tmpf file
+
+第十四章 进程管理和工作控制
+    进程管理
+		加载内存中执行的程序实例，称为进程
+		ps
+			linux版的ps是读取/proc这个虚拟目录的文件，以获取目前核心及进程的信息
+			常用用法
+		显示目前所有进程
+			unix风格
+		  ps -e #列出要选出所有的进程 
+		  ps -ef #控制显示格式的选项，表示要列出完整的进程信息
+		  ps -eF #同-f,但比-f列出更多
+		  ps -ely #-l表示使用长格式，-y表示不要显示旗标，经常放在一起使用，且-y只能和-l合用
+		  BSD风格
+		  ps ax # a表示要列出和终端有关的进程，如果和x合用，表示要列出所有的进程
+		  ps axu # u是控制显示格式的选项，表示要以用户导向的角度来列出进程
+		  ps axuw  # w是控制显示格式的修饰选项，表示要用较宽的行数来显示进程信息，超过宽度的信息会被裁掉，
+		  ps axuww #如使用2个WW则不限制显示宽度，信息会全部显示出来，不会被阶段
+		列出进程的树状结构
+		  unix
+		  ps -ejH #-e同前述，-j控制显示格式的选项，表示要以工作控制的格式来显示
+		            -H控制显示格式的修饰选项，表示要列出进程的层次结构
+		  BSD
+		  ps axjf #ax合用表示要列出所有进程，j表示要使用BSD风格的工作控制格式
+		            f是控制显示格式的修饰选项，表示要列出进程的阶层结构
+	  自定义输出字段
+			 -o或o都可以
+			 unix 
+			 ps -eo pid,ni,user,
+			 BSD
+			 ps axo pid,ni,user	
+		列出某一进程的程序名称和参数
+		  列出进程编号1的程序名称
+		  unix
+		   ps -p 1 -o args
+		  BSD
+		   ps p 1 o args  					
+		  列出某一使用者的进程或用该用户权利执行的进程
+		   ps -U root -u root u
+		   -U 是指建立进程的使用者名称 -u是指进程拥有的权限等同于该使用者 
+		   u指以用户导向的格式输出进程信息
+		ps axuw各字段意义
+			USER 执行身份
+			PID 进程编号  
+			%CPU CPU资源使用率
+			%MEM 内存使用率
+			VSZ 进程在虚拟内存占用的大小
+			RSS 进程在真实内存占用的大小
+			TTY 控制该进程的终端
+			STAT 进程状态
+			START 开始执行时间
+			TIME 进程已运行时间
+			COMMAND 执行命令
+			PPID 父进程编号
+	STAT进程状态代码
+		D 不可中断的休眠(通常是进行输出输入I/O的进程)
+		R 可执行的(在执行队列)
+		S 等待接受工作(休眠)
+		T 被追踪或被停止
+		W 分页
+		X 死亡
+		Z 僵尸是指父进程没有妥善摧毁的子进程
+		< 高优先级的工作
+		N 低优先级的工作
+		L 已分页锁定于内存中
+		s 一个session leader
+		+ 在前台的进程群组中 
+		Top
+		 持续观察目前进程的状态信息，从左到右，
+		 第一行代表：top,显示系统的负载的情形，系统现在的时间，已开机时间，目前登陆系统的用户数，
+		 过去1、5、15分钟等待执行的进程平均数
+		 第二行代表：Tasks,显示进程的统计，进程总数、正在执行的进程数、休眠的进程数、暂停的进程数
+		 僵尸进程数
+		 第3行代表Cpu,显示CPU使用率，ur指使用者执行的进程占用CPU的百分比，sy指核心系统内部占用CPU的百分比，ni指renice的进程占用
+		 CPU的百分比，id指CPU闲置的百分比，wa指等待I/O的百分比，hi指处理硬件中断的百分比，si指 处理软件中断的百分比
+		 第4行Mem显示目前内存使用的情形，内存总量，已使用的内存量、尚未使用的内存量，缓存区大小
+		 第5行显示目前置换空间使用的情形，置换空间总量、已使用的置换空间，尚未使用的置换空间，快取大小
+		 第6行空白
+		 第7行进程信息的各个字段
+			 PID  进程编号                 SHR 可分享给其他进程的内存大小
+			 USER 拥有进程的使用者          S  进程状态
+			 PR 进程的优先级               %CPU 进程占用CPU的百分比
+			 NI 进程的nice值               %MEM 进程占用真实内存的大小
+			 VIRT 进程占用的虚拟内存大小   TIME+  进程已占用的CPU时间
+			 RES 进程常驻时占用的内存大小  COMMAND 程序名称和参数
+	传递信号
+		使用kill命令可以对进程传送信号进行管理，管理进程基本原则一：先发送信号给进程，让进程自己完成该做的事
+		若进程已不听指挥，或是去控制，再发出强制性的信号
+		结束一个进程为例
+		不是daemon服务器，先对它发出HUP信号，如不自行结束，就发出TERM信号，再不结束，就发出KILL的信号，强制终止进程
+		是一个daemon服务器，先对它发出TERM信号，若无法自行结束，在发出KILL信号
+		管理进程的基本原则二是：各得其所
+		在主机负载高的时候，需紧急执行的，就提高其执行的优先级，进程进入执行排程的优先级，称为nice值，通常其值介于-20~20之间
+		nice值越小，优先级越高，只有root才能调整介于-20~-0的nice值，一般用户，只能调整0~20的范围，也就是，只有root才能调高
+		进程的优先级，一般用户只能降低优先级，nice和renice可以用来调整nice值，nice用于尚未执行的程序，renice则运用在已执行的进程
+		nice语法
+				nice -n nice值 程序 #其值范围-20~19，若省略-n,不指定nice值，则使用预设nice值10来执行该程序
+		renice 
+				renice  nice值 -p PID -g 群组 -u 使用者名称 #-p-g-u 3个选项可单独使用或组合使用		
+		PRI和NI 
+		  和nice值不同,PRI永远以0或正整数，PRI=NI+20
+		  若NI是-20 那PRI为0，其最大值为39
+	工作控制
+		在bash互动模式下，允许用户暂停某一进程，稍后再回复执行该进程，这种赋予使用者操控进程的机制
+		称为工作控制
+	进程替换
+	  进程替换可以让我们把标准输出，一次倒给许多进程作为输入，或者由多个进程取得其输出
+	  然后倒给某个程序去处理
+	   comm <(sort afile)<(sort bfile)
+	   进程替换用法主要有两个
+	     命令<(指令行) 这是通过设备文件/dev/fd/n或缓存文件，把进程的输出倒给<左方的命令来读取
+	     >(指令行) 通过设备文件/dev/fd/n或缓存盘，把数据提供()中的进程去读取
+			查看echo借用哪个设备文件来做输出的中介 
+	    echo >(true) #/dev/fd/63
+	    echo <(true) #/dev/fd/63
+	    一次读取一行数据放入数组
+	    read -a arr <<(echo 123 2 3 4)
+	    比较文件或目录差异
+	    diff <(ls $dirA) <(ls $dirB)
+	    
+第十六章 使用Shell Script撰写文本接口程序
+	撰写文本接口程序
+		 安装diglog
+		  显示信息 msgbox
+		  dialog --msgbox 信息内容 高度 宽度
+		  dialog --msgbox "这是一个测试" 10 40
+          窗口按钮只有一个，若按下回车，则返回值为0，若按下ESC则为255，可以用$?来判断窗口状态
+	        DIA='/usr/bin/dialog'
+					$DIA --msgbox "这是一个测试" 10 40
+					x=$?
+					if [ "$x" -eq 0 ]; then
+						 echo '你按了ENTER'
+					elif [ "$x" -eq 255 ]; then
+						 echo '你按了ESC'
+					else
+						 echo '未知错误，可能按了Ctrl-C'
+					fi
+      是或否对话框（yes or no）
+	      dialog --yesno 信息内容 高度 宽度
+	      若$?为0，则选择了是
+	      若为1，则选择了否，为255，则按了ESC，放弃回答
+						DIA='/usr/bin/dialog'
+						CHOICE=''
+						dialog --yesno "要继续吗？" 10 40
+						x=$?
+						if [ "$x" -ne 0 ]; then
+							 CHOICE='NO'
+						fi
+						if [ -n "$CHOICE" ]; then
+							 echo '选择不继续...'
+						else
+							 echo '选择继续...'
+						fi
+	多选一对话框(radiolist)
+				dialog --radiolist 信息内容 高度 宽度	选项书目 选项列表 
+				选项格式:选项名称 选项说明 默认是否启用 on代表启用 选项列表则是由各项所组成的字符串
+				DIA='/usr/bin/dialog'
+				TMP="/tmp/radiolist.$$"
+				M1="选择文件系统"
+				NUMFS=3
+				FSLIST="ext2 第二版  off ext3 第三版  on ext4 第4版 off"
+				$DIA --radiolist "$M1" 10 40 $NUMFS $FSLIST 2> $TMP #默认会由标准错误输出，因此2>把标准错误输出结果存入TMP，可以取的选项
+				FSTYPE=$(cat $TMP)
+				[ -z "$FSTYPE" ] && FSTYPE="ext3"
+				rm -f "$TMP"
+				echo "选择的是: $FSTYPE"
+				
+第十七章 文件操作 
+		解决寻找文件时，因匹配文件过多，导致报参数过长
+				DestDir=~/tmp
+				for f in $DestDir/*.txt
+				do
+						echo $f
+				done
+  判断文件是否存在
+			在对文件进行复制、修改、删除或执行等操作之前，要先判断文件是否存在
+			if [ -f /etc/rc.d/rc.firewall];then
+			  . /etc/rc.d/rc.firewall
+			fi
+			目录可以用-d
+			建立区块设备文件
+			使用mknod,可以建立特殊的文件，如区块设备文件，字符设备文件
+			FIFO文件
+			mknod 选项 文件名 文件形态 主要设备代码 次要设备代码
+			主要设备代码称为MAJOR,也是指硬件的分类，
+			次要设备代码MINOR，是指再细分其特殊属性
+			只要2者配对值相同，即视为相同属性的设备
+			mknod myhda1 b 3 1
+			在建立设备文件时，直接指定文件权限
+			mknod -m 666 myhda1 b 3 1
+			不同的设备，其MAJOR和MINOR值可在核心源码在Document/devices.txt有定义
+			如只需查询MAJOR。可参考、usr/include/linux/major.h
+	取得文件属性
+		取得文件的时间：atime
+		修改文件内容的时间:mtime
+		改变文件模式的时间:ctime
+		使用stat取得文件属性，文件系统信息
+		stat -f /dev/sda1 #文件系统
+		stat ip.sh #文件属性
+		stat -c 格式代码 文件 #取得文件属性的格式代码
+		    文件格式
+				%A 文件权限(代码rwx)
+				%a 文件权限(八进制)
+			  %b 占用的区块数量(blocks)
+			  %B 用%b计算区块数量时，每一区块的大小，预设是512bytes
+			  %D 16进制表示设备编号
+			  %d 10进制表示设备编号
+				%C   SELinux 安全环境字符串
+				%f	十六进制原始模式
+				%F	文件类型
+				%g	文件的属组ID
+				%G	文件的属组组名
+				%h	硬链接数量
+				%i	Inode 编号
+				%n	文件名
+				%N	如果对象是一个符号链接，显示引用到的其它文件名
+				%o	I/O 块大小，预设4096字节
+				%s	文件大小，以字节为单位
+				%t	十六进制主设备类型
+				%T	十六进制子设备类型
+				%u	文件的属主ID
+				%U	文件的属主用户名
+				%x	上次访问时间
+				%X	从UNIX 元年起计的上次访问时间
+				%y	上次修改时间
+				%Y	从UNIX 元年起计的上次修改时间
+				%z	上次更改时间
+				%Z	从UNIX 元年起计的上次更改时间
+				有效的文件系统格式
+				%a	非超级用户可用的剩余块数
+				%b	文件系统的总数据块数
+				%c	文件系统中文件节点总数
+				%d	文件系统中空闲文件节点数
+				%f	文件系统中空闲块数
+				%C	SELinux 安全环境字符串
+				%i	十六进制文件系统ID
+				%I	允许的文件名最大长度
+				%n	文件名
+				%s	块大小(用于快速传输)
+				%S	基本块大小(用于块计数)
+				%t	十六进制类型描述
+				%T	可读性较好的类型描述
+    特殊属性
+      设定属性 chattr  查看lsattr
+      格式
+      增加
+				chattr +属性代码 文件
+				使用+表示各个属性可个别加上，不影响文件其他原有特殊属性
+			设定
+				chattr +属性代码 文件	
+				使用=表示直接指定文件属性，原已存在但未指定的属性会消失
+			删除
+			  chattr -属性代码 文件
+			  移除属性
+			属性代码有AacDdijsSu,常用
+			   A  文件的取用时间不会变   所有用户
+			   a  只能使用转向附加的方式开启文件来进行写入 root
+			   i  不能修改文件    root
+			   D该文件不需要用dump做备份 所有用户		
+    文件差异对比
+      DIFF="/usr/bin/diff"
+			[ $# -ne 2 ] && echo "Useage: $0 文件1 文件2" && exit 2
+			File1=$1
+			File2=$2
+			$DIFF $File1 $File2 &> /dev/null #不产生输出信息
+			#echo $?
+			if [ $? -eq 0 ];then
+					echo "文件相同"
+			else
+					echo "文件不相同"
+			fi
+      产生patch
+      diff 选项 原文件 新文件 > patch文件
+           -u 表示采用一种diff格式
+      patch -p0 < patch文件
+             -p表示要移去的目录层数，0表示不移去任何文件名前的目录
+      文件在目录
+      diff -uNr  dirA dirB >patch文件
+           -r 递归对比2个文件所有子目录和文件
+           -N 如果有不存在的文件则视为空文件
+    建立临时文件
+      如使用$$来定义临时盘，也可以使用mktemp
+      格式
+				 mktemp 选项 临时盘模板，建立成功则$?传回0,失败传回1
+			指定临时文件模板
+			 mktemp /tmp/tfile.XXXXXX(少一个都不行)
+			 TMP=$(mktemp)
+			 echo "aa">$TMP
+			 [ -f "$TMP" ] && rmm -f $TMP 
+
+第十八章 主机系统管理
+	账号管理
+		目前有2种账号管理程序
+			adduser模块
+				内含adduser、deluser、addgroup、delgroup
+			passwd模块 
+			 	useradd userdel passwd chpasswd chsh vipw 这是c语言开发
+			在互动模式下，建立账户用adduser 账号,在建立过程会询问账号名称
+			而useradd则需自行指定账户在密码在密码文件各个字段值，其行为可事先规范
+			默认值的配置文件在/etc/default/useradd,用useradd -D展示
+				在-D选项后面加上其他选项，可修改建立账号的默认值
+					-b 家目录前置路径
+					-e 账号过期日
+					-f 账号过期几天后失效
+					-g 默认的群组代码或名称
+					-s 登录的使用shell
+					-m 建立家目录
+			使用chpasswd来提高密码的自动化，会由标准输入中读取”账号:密码“的数据行
+			使用adduser来模仿useradd
+				adduser --quiet --disabled-passwd -- gecos '' joy
+				echo 'joy:j88^isgreat' | chpasswd
+				--quiet 不产生任何信息
+				--disabled-passwd 暂时不设密码
+				--gecos 不设用户信息
+		删除账号
+			保留家目录
+				userdel or deluser 账号
+		    不保留
+		        userdel -r 账号
+		        deluser --remove-home 账号		
+
+第十九章 Bash在Tcp/ip方面的运用
+	网络转向，在Bash中，可以把tcp和udp的套接字当做文件一样来使用，只要对它们进行读写，就可以和远程的主机    进行网络通信，需要在Bash编译安装时启用--enable-net-redirections
+	格式
+		/dev/tcp/主机域名或IP/服务信道port
+	测试本机是否支持网络转向
+		exec 6<>/dev/tcp/x.x.x.x/80
+	如没出现任何信息，表示支持网络转向功能
+	Echo服务器
+	 是指传入数据等于输出数据，可以用来作为Socket程序设计的测试用途，只要在/etc/ineted.conf或/etc/xinetd.d/echo做开启操作，再重新启动inetd/xinetd网络连接管理程序，即可启用Echo Server
+	 格式
+		TCP
+	 	/dev/tcp/主机域名或ip/服务信道 port/
+	 	udp
+	 	/dev/udp/主机域名或ip/服务信道 port/
+	 example
+	    #连接localhost的ip 127.0.0.1的Echo Server在port7的通道，接口是文件代码3
+	    #使用udp协议连接 exec 3<>/dev/udp/127.0.0.1/7
+	 	exec 3<>/dev/tcp/127.0.0.1/7
+        #向链接接口丢出一个字符串信息
+	 	echo "a" >&3
+	 	#读取一行数据
+	 	head -1 <&3
+	 	#关闭文件代码3
+	 	exec 3>&-
+	 	exec 3<&-
+	自动登录ftp
+			Filename="test.tgz"#上传文件
+			HOST="192.168.1.1"
+		    USER="john"
+		    PASS="j888"
+		    cd /root
+			ftp -n $HOST <<AUTOEOF #-n关闭ftp自动登录功能，改由转向输入，
+								   #不关闭的话ftp会先读取用户家目录的.netrc,
+								   #如果.netrc有事先设好账号密码，就可以自动登录
+					.netrc文件格式文件权限设为600
+					 default(主机名)  login(后接用户名) john passwd(密码) j888					
+			 quote USER $USER#使用ftp的quota命令，将账号密码逐字传送给远程server
+			 quot PASS $PASS
+			 binary #切换传输模式为二进制格式，如server使用vsftpd架设
+			 put $Filename
+			 quit
+			 AUTOEOF          	
+	自动登录ssh
+	    要建立可以自动登录SSH Server的机制，首先要在SSH的Client产生一组私钥，然后把公钥上传到
+	    SSH server端，并做好设定(文件权限)，私钥则在client，利用scp远程复制操作，不必输入任何密码
+	   	 原理
+	    	当用户要登录远程主机时，只要指定采用的身份文件(identity)来识别，服务器端就会拿出
+	    	公钥的变化内容向client端询问，如果Client能以它的私钥求出这项变化内容的原因，满足
+	    	服务器的挑战(challenge)，那么身份识别就算成功，因此免用密码即可登录
+	    	产生公私密钥的方法，可采用OpenSSH提供的ssh-keygen
+	    		ssh-keygen -f 密钥文件名 -t 使用的算法
+	    	其中密钥文件名可自定义，而算法有RSA和DSA两种
+	    	    ssh-keygen -f id_rsa -t rsa	
+	    	   当程序询问密码和第二次确认密码时，按下ENTER,表示不设密码，此时会在工作目录
+	    	   产生私钥文件id_rsa和公钥文件id_rsa.pub,接下来，把公钥文件上传至Server端的/root/.ssh
+	    	   目录下，并把文件名改为authorized_keys，接着登录SSH Server，以root身份执行以下权限的设定
+	    	     cd /root
+	    	     chmod go-w(减掉群组和其他身份对root目录的写入权限)
+	    	     cd .ssh
+	    	     chmod 700 . (把.ssh目录本身的权限改为700)
+	    	   	 chmod 600 .  (把.ssh目录下所有文件的权限改成600，只有root可以读写)
+	    	     离开Server回到Client,使用-i，指定用当前在目录下面的私钥文件id_rsa(即为指定身份文件)
+	    	      ssh root@ip -i id_rsa 不需要密码即可登录表示成功
+	    自动登录SSH，并不是只能执行SCP而已，任何指令都行
+	      ssh 192.168.1.2 'echo xxxx'就是在自动登录后，再该主机中执行echo指令，但执行结果响应到local端
+	    SCP用法
+	    	即secure copy意思，即安全性复制
+	        语法
+	         将远程主机的文件复制到local文件
+	          scp 账号@主机：/目录/文件  /目录/文件
+	         将本地文件复制到远程文件
+	          scp /目录文件账号 账号@主机：/目录/文件
+	        如要复制整个目录，可在scp加上-r选项，如要保存文件的属性，加上-p选项
+
+第二十章 主机安全管理 
+  收集主机信息
+  	列出主机IP
+  	   ListIPcmd="/sbin/ifconfig" 
+       IP=$($ListIPcmd | grep 'inet addr:' | grep -v '127.0.0.1' | awk '{print $2}' | awk -F: '{print $2}
+       #执行ifconfig，把结果通过管道由grep滤出含关键词inet addr: 的数据行。再通过管道由grep使用选项-v
+       #去掉包含ip地址127.0.0.1的行，然后由awk印出第2个字段，最后由awk以：当分隔符取出第二个字段，就可得       #到IP值
+       
+    找出主机名
+    	p=$1
+		HostCmd="/bin/hostname"
+		HostName=$($HostCmd) #取得主机名
+		if [ -n "$p" ]; then#判断是否有命令行参数
+			if [ $p = host ]; then #如果参数是host，则只显示主机名
+				MachineName=${HostName%%.*}#由尾部去掉最长的.*样式的字符串即可去掉域名，只留主机名
+				echo $MachineName ; exit 0
+	    	elif [ $p = domain ]; then#如果参数是domain,则只显示域名
+				Domain=${HostName#*.}#有最左方去掉最短的*.样式的字符串
+				echo $Domain; exit 0
+			fi
+		fi
+	    echo $HostName#不加任何参数显示完整的主机域名
+
+    列出核心信息
+        uname -s 核心名称
+              -n 主机名
+              -r 系统版本
+              -v 系统编译版本
+              -m 主机硬件
+              -o 操作系统种类
+              -a 所有信息
+              
+    列出内存使用情况
+        free  会把真实内存和swap使用情况显示出来，
+            -b byte显示
+            -k kb显示
+            -m mb显示
+            -s 每隔几秒更新显示	   
+            FreeCmd="/usr/bin/free"
+			Mem=$($FreeCmd | grep ^Mem:)#找出真实内存用量的行，如果改成过滤^Swap,则可列出交换空间的情况
+			TotalMem=$(echo $Mem | awk '{print $2}')#过滤出全部内存
+			UsedMem=$(echo $Mem | awk '{print $3}')#过滤出内存总量
+			FreeMem=$(echo $Mem | awk '{print $4}')#过滤剩余可自由配用的内存总量
+			echo $TotalMem $UsedMem $FreeMem
+			
+	列出磁盘种类
+	    要取得磁盘驱动器种类，可先读取核心的分区信息，在读取主磁盘的设备型号，核心分区信息记录
+	    在/proc/partitions这个虚拟文件中，每一行以空白隔开，分成4个字段，分别是:主要设备代码，
+	    次要设备代码，拥有区块数，设备名称，找到设备名称后，再读取/proc/ide/had目录下关于此磁盘的信息文         件，如media记录媒体的种类，model记录其型号，如果磁盘接口为SATA/SCSI，则可利用scsi_info这个工具         来读取磁盘型号
+	     		    while read x x x m
+					do
+					    case "$m" in
+					      hd?)
+					        Media=$(cat /proc/ide/$m/media)
+					        if [ "$Media" = "disk" ] ; then
+					          echo "磁盘驱动器: $m, 型号: $(cat /proc/ide/$m/model)"
+					        fi
+					        ;;
+					      sd?)
+					        M=$(scsi_info /dev/$m | grep MODEL)
+					        M=${M#*\"}
+					        M=${M%\"*}
+					        echo "磁盘驱动器: $m, 型号: $M"
+					        ;;
+					      *) 
+					        ;;
+					    esac
+					done < /proc/partitions
+                使用while循环来处理/proc/partitions内容读取，使用转向输入的方法，取得该文件内容
+                使用read  x x x m来读取每一行的4个字段，由于前3个字段不需要，因此，全部用同一个
+                变量x来取得，而只留m这个变量的内容，每一行数据读入后，m的内容即是设备名称
+                使用case来处理m的内容，如果是SATA/SCSI，则使用scsi_info取得设备型号，放入m中
+                m的内容为MODEL=“型号”，并去掉M里面开头的字符串MODEL="型号"，去掉M里面最后的双引号
+
+    列出磁盘容量
+       利用fdisk -l /dev/磁盘设备名称
+       只要提供的heads、sectors、cylinders找出来，就可以计算精确的硬盘容量大小
+       HD=${1:?'请提供磁盘驱动器的设备名称。例如:hda或sda'}
+	   SIZE=$(fdisk -l /dev/$HD | grep "heads,*" | awk '{print $1 * $3 * $5 / 2048}') 
+       echo "磁盘驱动器$HD的容量大小为$SIZE MB."
+       #使用grep过滤含有heads，关键词的数据行，需要的3项硬盘信息位于该行的第1,3,5个字段
+       #使用awk计算这3个字段的乘积，单位是512bytes，因此，再除以2048，即可换算为MB  
+
+    列出磁盘用量
+      要找出磁盘目前的使用量，可利用df这个工具，不加任何参数是，默认结果和df-k相同
+        shopt -s -o nounset
+		declare -i TOTAL
+		get_usedTotal() {
+		    #指定打印第一行数据，那么就不会让类似"/"和"/root"的这样的参数传入，过滤出2行数据导致报错
+			TOTAL=$(df -B 1024K | grep ${p}$ | awk 'NR==1{print $3}')
+			echo "已使用的空间大小: $TOTAL MB."
+		}
+
+		get_avaibleTotal() {
+		    #df执行的结果通过管道交给grep，由grep找到符合样式的数据行，其中第3个字段即是已使用的空间
+		    #样式${p}是变量值$p,就是挂载点的名称，如或“/”或“/var”而${p}后方的$是说挂载点名称出现在该行
+		    #的最后面
+			TOTAL=$(df -B 1024K | grep ${p}$ | awk 'NR==1{print $4}')
+			echo "剩余可用的空间大小: $TOTAL MB."
+		}
+		p=${1:?'提供分区的挂载点名称，例如: / 或 /home 或 /var'}
+		if [[ ! $p == /* ]]; then#判断p的格式如果不是为/开头，就自动加上去
+		   p=/$p
+		fi  
+		get_usedTotal $1
+		get_avaibleTotal $1
+
+    列出主机系统平均负载
+      所谓系统平均负载是指，在某段时间内，等待执行的进程数的平均值，系统平均负载值越高，代表系统越忙
+      有w和top两个工具
+        get_loading_w.sh
+			shopt -s -o nounset
+			W="/usr/bin/w"
+			show_loading=$($W | head -1)
+			L1=$(echo $show_loading | awk '{print $10}') 
+			L5=$(echo $show_loading | awk '{print $11}')
+			L15=$(echo $show_loading | awk '{print $12}')
+			L1=${L1%,*}
+			L5=${L5%,*}
+			L15=${L15%,*}
+			echo "1、5、15分钟的平均负载: $L1 $L5 $L15" 
+		get_loading_top.sh	
+			shopt -s -o nounset
+			T="/usr/bin/top"
+			show_loading=$($T | head -1)
+			L1=$(echo $show_loading | awk '{print $12}') 
+			L5=$(echo $show_loading | awk '{print $13}')
+			L15=$(echo $show_loading | awk '{print $14}')
+			L1=${L1%,*}
+			L5=${L5%,*}
+			L15=${L15%,*}
+			echo "1、5、15分钟的平均负载: $L1 $L5 $L15" 
+    列出系统中的隐藏文件/特殊权限的文件		
+    	la -a   全部显示 -A 不会显示 .和..这两个目录
+        find / -name '.*' 从根目录开始往下找起，		
+        find / -name '.*' -perm 1777 找出文件权限为1777
+        find / -name '.*' -perm +2000 +是指只要有一个权限位符合 
+        find / -name '.*' -perm +4000 -exec ls -la {} \;  -exec 找到符合样式的文件后，执行特定的指令
+        {}代表找到的文件 \;则代表-exec执行指令到此结束，由于分号是bash的分隔命令的符合，因此，要用\转义
+
+    列出占用磁盘空间较多的目录
+      已空间用量来追程序，只要能够列出各子目录的文件大小，找出空间用量最异常的目录
+      再找出和该目录相关的应用程序
+      chk_dir_size.sh
+      	shopt -s -o nounset
+		DIR=${1:?'请提供如果想要检查的路径。例如：/var'}
+		if [[ ! $DIR == /* ]]; then
+		   DIR=/$DIR
+		fi 
+		declare -i size SIZE
+		# 空间用量多少以上才列出
+		SIZE=50
+		while read size dir#使用while循环来处理find指令交给read读取的每一行数据，格式为用量 路径名称
+		do
+		    if [ $size -gt $SIZE ]; then#如果size的大小超过指定量SIZE，则列出
+		        echo -e "$size\t\t$dir" 
+		    fi
+		done < <(find $DIR -mindepth 1 -type d -exec du -sm {} \;)#find由DIR的下一层开始找起
+		-mindepath 1 是说不处理最上层的目录，如指定要由/var开始找，-mindepth 1会忽略/var本身。而由/var
+		的下一层开始找起，-type d是指想要寻找的文件形态为目录，找到就用du -sm来计算空间用量，-s 是指文件大小的总和 -m 是采用MB为计量单位
+      #执行方式，采用./chk_dir_size不用sh chk_dir_size.sh 方式，因为采用sh的方式while read读取find搜索结果时会报错http://blog.csdn.net/wangweixaut061/article/details/7412553
+
+    
+    主机服务信道
+      所谓服务信道（port 通信端口）是指主机中应用程序对外服务的管道，范围为0-65535
+      其中0-1023为系统服务专用，而1024-65535则开放给系统中其他应用服务程序使用	
+      通信状态，是指TCP协议的连接状态模式和UDP协议通常没有状态
+        查看通信状态，使用netstat
+          netstat -a -n 查看所有的连接状态
+                  -ta -n 查看所有的TCP连接状态
+                  -ua -n 查看所有的UDO连接状态
+                  -l -n 列出尚未连接的通道
+                  -lt -n 查看所有TCP未连接的通道
+        查找端口与服务的对应关系 lsof
+        会列出主机中已开启的文件，包括一般文件，目录、区域文件、字符文件、串行文件
+        lsof -i 与netstat -ta -n -p 效果类似-p会列出每一个和socket有关的程序名称和进程编号
+      
+    限制连接来源   
+      TCP Wrapper是一种网络连接访问控制的系统，提供一个小型的服务接取程序tcpd及libwrap函数库
+	      通过tcpd,如果连接软件支持TCP Wrapper，而在编译时有开启选项，加入libwrap函数库，那么也可以使用
+	      TCP Wrapper来过滤连接范围，如OpenSSH vsftpd
+         利用TCP Wrapper进行连接接管的配置文件是/etc/hosts.allow 和/etc/hosts.deny
+         已行设定单位，其设定语法为
+         	应用程序的执行文件名：ip或主机名串行 ：控管操作
+               控管操作有允许和拒绝两种，如果在host.allow 中没有指定，则默认为允许 
+               如在hosts.deny没有指定，默认为拒绝
+          TCP Wrapper访问控制流程先读取hosts.allow,在读取hosts.deny，并且采取一旦符合
+          就停止的原则，通常allow设定允许的来源范围，deny设定拒绝的范围，如果这两个文件内容为空或者文件           不存在，则访问控制功能就关闭  
+             应用程序的执行文件名可以通过inetd或xinetd来查看，在/etc/xinetd.d/查看配置文件，如果有程序              的配置文件在倒数的server选项中
+          自动建立hosts.allo和hosts.deny
+					# 只用于C 网段
+					shopt -s -o nounset
+					ListIPcmd="/sbin/ifconfig"
+					Hallow="/etc/hosts.allow"
+					Hdeny="/etc/hosts.deny"
+					Services="sshd vsftpd in.qpopper"
+					IP=
+					MASK=
+					declare -i ip4 L U c net
+					# 取得网络掩码
+					get_mask() {
+					    MASK=$($ListIPcmd | grep 'Mask:' | grep -v '127.0.0.1' | awk '{print $4}' | awk -F: '{print $2}')
+					}
+					# 取得主机所在网段的网络地址
+					get_netip() {
+					    IP=$($ListIPcmd | grep 'inet addr:' | grep -v '127.0.0.1' | awk '{print $2}' | awk -F: '{print $2}')
+					    # IP第四个数字
+					    ip4=${IP##*.}
+					    # IP前3个数字
+					    f3ip=${IP%.*}    
+					    # 取得目前网卡的网络掩码
+					    get_mask
+					    #网络掩码的第4个数字
+					    mask4=${MASK##*.}
+					    # L等于mask4
+					    L=mask4
+					    # U为主机所属网段可用IP 数
+					    U=256-L
+					    # 计算主机IP是落在哪一个网段
+					    c=ip4/U
+					    # 网络代表号
+					    net=U*c
+					}
+					get_netip
+					:> $Hallow
+					:> $Hdeny
+					echo "ALL: ALL" >> $Hdeny
+					for s in $Services
+					do
+					   echo "$s: $f3ip.$net/$MASK" >> $Hallow
+					done
+
+      使用iptables     
+	        iptables只是封包过滤的设定工具，真正提供过滤功能的是Netfilter,其主要是在linux核心建立检查点            (hook),供核心模块注册使用，这样一来，便可对网络层中每一个通过检查点的封包进行处理，决定要允             许通过或予以丢弃，但是由于核心的子系统位于系统保护区，用户并无法直接操作，为此，提供了一个使            用者空间下的工具，利用iptables便可以在各个检查点建立规则，对封包进行过滤
+	        iptables内置3个表,分别是filter、nat、mangle，各表内置有若干个链
+	        filter是主要用来来过滤封包，也是默认的规则表
+	        表                链                   备注
+	        filter           INPUT              过滤目的地是本机包
+	                         FORWARD            不是本机产生的包，目的是其他主机
+	                         OUTPUT             过滤本机产生的包
+	        NAT表主要用于封包地址的转换
+	        nat              PREROUTING         包到达网络接口时，改写其目的地址
+	                         OUTPUT             改写本机产生的包其目的地址
+	                         POSTROUTING        包要离开主机前，改写其来源地址
+	        mangle表主要修改包的地址和内容
+	        mangle           PREROUTING          进入防火墙后，路由判断前，对包进行修改
+	                         INPUT               包经路由判断后，在本机进程接收到它时，对包进行修改
+	                         OUTPUT              本机产生的包，在决定包目的地址之后，对包进行修改
+	                         FORWARD             路由判断之后要到另一个接口之前，对包进行修改
+	                         POSTROUTING         路由判断之后，要离开主机之前，对包进行修改
+
+	        语法
+	          分为3个部分，iptables命令本身，条件判断，对包的处理方式   
+	          iptables -A  ...    -j 
+	          若没有指定表，默认使用filter，若需指定表，在iptables本身加上-t 以指定作用的表
+
+
+
+    文件完整性审核
+       checksum是一种固定长度的信息摘要，都会提供两个checksum的工具，一个事md5sum，一个是sha1sum
+        md5sum用法
+          md5sum 文件 > checksum 值存盘
+        检查checksum值是否正确
+         md5sum -c checksum值存盘，如果正确不会产生任何信息，但$?会传回0,但是值，则$?传回1，如果要产生          详细的信息，加上-v
+       sha1sum用法
+         sha1sum文件>checksum值存盘
+       
+    邮件通知
+    	 邮件方法
+    		echo 邮件内容 | mail -s 邮件主题 收信人 email 地址
+
+	监测分区磁盘空间使用量
+	    shopt -s -o nounset
+	    # 如果想要检查分区，请以空白隔开
+		partitions="/ /bk /backup"
+	    # 发件人
+        From='admin@jack.edu.tw'
+        # 收件人
+        To='admin@sample.edu.tw'
+        # 主题
+        Subject='分区空间使用量检测通知'
+        # 邮件内容
+        Msgbody=
+       # 警示百分比，默认达到90%就发出警告通知
+        declare -i AlertPcent=2
+       # TOTAL: 磁盘空间已使用量 TOTALavl:剩余可用空间
+       declare -i TOTAL TOTALavl
+       mail='/usr/bin/mail'
+       HostCmd="/bin/hostname"
+       # 主机名
+       HostName=$($HostCmd)
+       # 已用量百分比
+	    get_usedTotalPcent() {
+		    local tmp pcent
+		    declare -i pcent
+		    # 取得已用量之百分比，例如59%
+			tmp=$(df -B 1024K | grep ${p}$ | awk '{print $5}')
+		    # 去掉%的符号
+		    pcent=${tmp%\%*}
+		    return $pcent
+		}
+		# 已用量
+		get_usedTotal() {
+		  TOTAL=$(df -B 1024K | grep ${p}$ | awk 'NR==1 {print $3}')
+		}
+	    #剩余可用量
+	    get_avaibleTotal() {
+				TOTALavl=$(df -B 1024K | grep ${p}$ | awk 'NR==1 {print $4}')
+			}
+	   # 邮件通知
+			mailto() {
+			   echo "$Msgbody" | mail -a "From: $From" -s "$Subject" $To
+			}
+			p=
+			pcent=
+			if [ -n "$partitions" ]; then
+			   for p in $partitions
+			   do
+			      get_usedTotalPcent $p
+			      pcent=$?
+	   # 是否已达警示百分比
+			      if [ $pcent -ge $AlertPcent ]; then
+			         get_usedTotal $p
+			         get_avaibleTotal $p
+			         Msgbody=$Msgbody" 分区 $p 目前使用量 $TOTAL MB 已达 $pcent剩余可用空间 $TOTALavl MB，请尽快处理."
+			      fi
+			   done
+			   if [ -n "$Msgbody" ]; then
+			      Msgbody="$HostName 主机: "$Msgbody
+			      mailto
+			   fi
+			fi  
+	
+	使用Bash Shell邮件和附件
+		zip必须转为二进制文件才能在邮件中发送
+		二进制文件编码/译码
+		在sharutils有uuencode和uudecode
+		   语法 uuencode -m 文件 文件名>存成文本文件
+		     -m 是指使用base64的编码格式，可省略，只用uuencode的内置编码格式
+		     文件指的是要转换编码的目标文件，也可由标准输入读取
+		     文件名是指要卸载编码结果第一行的文件名，如译码没有指定输出文件，就用做默认文件名
+		     通常是要编码的文件同名
+		     编译成文本文件后，使用uudecode
+		     uudecode encode.txt -o i2.zip	
+		     -o 指定译码回来文件名
+
+第二十一章 备份
+ 使用tar做备份
+  	 建立tar文件
+  		tar cvf tar文件文件或目录
+  	 建立文件，再加压缩
+  		tar cvzf (gzip)
+		tar cvjf (bzip2)
+	 查看tar文件内容
+		tar tvf #t只看不解开，tar文件已经过压缩，那么，如果要查看tar包内容，必须使用适当的选项
+		gzip加z,bzip2加j
+	 解开tar文件
+		tar xvf #x解开，gzip加z,bzip2加j
+		tar xvzf x.tar -C dir #如果指定解开到某一个目录，则该目录要事先存在才行
+	 对tar文件添加文件
+	    tar rvf x.tar test.txt #表示在tar文件后面添加文件，但无法和gzip、bzip2合用，先解开压缩文件
+	    	                   #如果只是更新文件，不是添加可用选项u
+	 合并tar文件
+		tar Avf 1.tar etc.tar test.tar
+	 删除tar中某一文件
+		tar vf 1.tar --delete etc/hosts #使用--delete指定文件删除
+	 比较文件系统和实际文件系统
+	    tar  dvf etc.tar #把tar文件和要比较的文件系统放在同一目录，如果有不同，则会出现警告信息
+	 进行目录搬移
+		tar cf - 来源目录 | tar xvf - -C 目的目录#先把来源目录对标准输出(-这个符号所代表的意思)产生tar
+												#文件，在通过管道交给tar,由标准输入(-)读取数据，然后使                                                #用xvf和-C解开到目录     
+  	 进行远程备份
+  		tar cvzf 主机:/路径/文件名.tgz 备份的目录或文件
+  	 进行完整备份
+  		使用tar做完整备份前，应该先确定系统已无用户或程序在执行，最好的方式是先进入单用户模式
+  		   telinit 1
+  		tar cvf home.tar -V home_`date +%Y%m%d%H%M`  /home#使用-V来对备份文件进行标识的操作
+  		如果要备份到磁带，可以加上M，以建立多份备份文件，存放到多卷磁带，加上M可以避免备份文件过大，无法		放入单一磁带中
+  		tar cMvf /dev/st0 /home #/dev/st0为磁带的设备文件名称
+  		tar cWvf home.tar -V home_`date +%Y%m%d%H%M` /home #一边备份，一边检验备份文件的完整性，可确保         这个备份文件往后正常可用
+     完整备份和差异性备份	
+      通常称完整备份为level 0的备份，level 0以上还可以1~9个level,这9个level则称为差异性备份
+        tar cvf home.tar -g /var/log/home-1.snar /home
+           长格式 
+              tar --create \
+                  --file=home.tar \
+                  --listed-incremental=/var/log/home-1.snar \
+                  /home
+        -g 和 --listed-incremental表示要建立一个可供差异性备份比较的数据文件
+        还原备份文件
+        先还原level 0 在还原level 1
+        -g表示tar是还原差异性备份，但由于备份文件中已有完整的数据，无须任何参考文件，因此指向/dev/null
+        tar xvf home.tar -g /dev/null
+        tar xvf  home-1.tar -g /dev/null       
+ 使用磁带机备份  
+     操作磁带的方法以linux+DAT72格式的磁带机为例
+        操作磁带机的指令是mt,磁带机的设备文件为/dev/st0和/dev/nst0
+        st0代表会自动倒带的设备，/nst0则是不自动倒带的设备 	
+    	通常使用dmesg指令，查看磁带机是否正常驱动
+    	mt默认会对/dev/tape这个设备进行操作，因此把tape指向不自动倒带设备文件名
+    	 In -s /dev/nst0 tape
+    	如不建立的话就需要使用-f指定要操作的设备文件名，mt -f /dev/st0 操作
+    	查看磁带的状态 mt status 或指定磁带机设备文件名 mt -f /dev/st0 status
+    	备份文件至磁带，写入完成后，自动倒带至开始的位置
+    	tar cvf /dev/st0 /home
+    	查看磁带目前位于哪一个区域 mt -f /dev/st0 tell #tell可以得到磁带目前的区域位置
+    	查看磁带内容  tar tvf /dev/st0 #t表示列出选项f指定的设备内容
+    	倒带 mt -f /dev/st0 rewind
+    	恢复备份  
+    	    cd /
+    	    mt -f /dev/st0 rewind  #倒带确保目前在磁带开头
+    	    tar xvf /dev/st0 home  #使用tar从/dev/st0读取备份文件并写入home目录
+    	比较备份文件和文件系统的差异 #tar dvf /dev/st0      	
+    	写入备份文件，但不自动倒带   #tar cvf /dev/nst0 /home
+    	在各文件之间移动 # mt -f /dev/nst0 rewind 
+    	移动到第2个文件后面，可执行 mt -f /dev/nst0 fsf 2 
+    	列出或读取某一个文件的内容 #如要列出第3个文件的名称，必须先移动到第2个文件后方 然后执行
+    	tar tvf /dev/nst0 ,会显示第3个文件的名称，查看状态 mt -f /dev/nst0 status ,移动到文件3末端		EOF处，在执行以下操作 mt -f /dev/nst0 fsf 1 ，往前移动 ，把位置移到第一个文件后面EOF，
+    	执行 mt -f /dev/nst0 bsfm 3 ,移动最后 mt -f /dev/nst0 eod  
+    	退出磁带盒 #mt -f /dev/st0 offline 
+    	备份到远程的磁带 #tar cvf domain.name:/dev/nst0 /home 
+
+ 使用cpio做备份
+     cpio是copy in/out的简称，意思是可以把文件放入备份文件，或由备份文件取出文件
+     由“标准输入”读取数据，然后由“标准输出”输出数据，本身并无法单独运行，必须和find
+     工具搭配
+     建立备份文件
+     find 备份目录 -print | cpio -o -Hcrc | bzip2 > 备份文件名.cpio.bz2 
+     -o copy-out模式(备份输出模式) -Ｈ指定备份文件的格式，有crc和newc
+     排除不要的文件，建立备份文件 -prune 排除
+     find /root -name '.*' -prune -o -print | cpio -o -Hcrc | bzip2 >root.cpio.bz2
+     从备份文件取出文件
+     bzcat cpio 备份文件.bz2 | cpio -i #如果是gz则zcat,-i会把备份文件内容恢复到当初备份时的绝对路径
+     备份文件的格式，cpio会自动侦测
+     备份到磁带
+     find /home -print | cpio -o Hcrc > /dev/st0 
+     由磁带取出
+     cpio -i -Hcrc < /dev/st0
+     备份到远程主机 
+      find /home -print | cpio -o Hcrc -O root@domain.name:/dev/st0 
+ 使用dump/restore做备份/恢复
+     在恢复文件时是另外调用restore来处理
+ 	 dump基本操作
+ 	  在dump备份前，应该在单用户模式下 telinit 1
+      备份挂载/home的文件系统
+       预计完整备份/home需要多大空间
+       dump -OS /dev/sda2 
+       第一次先进行完整备份
+       dump -0u -f home.dump /home  #-0表示完整备份，-u表示跟新/var/lib/dumpdates的备份记录，-f指定
+        备份文件或设备名称
+       进行差异性备份	
+         dump -1u -f home-1.dump /home #-1表示为level 1差异备份，/var/lib/dumpdates，第二个字段为备份
+         等级
+       查看备份状态 dump -W 
+       查看备份文件  restore -tf home.dump #-t表示要列出文件内容
+       恢复备份   
+        mke2fs -j /dev/sda3 #在/dev/sda3建立ext3文件系统
+        mkdir /mnt/home #建立/mnt/home作为sda3的挂载点
+        mount -t ext3 /dev/sda3 /mnt/home #挂载
+        cd /mnt/home 
+        restore -rf /bk/home.dump #restore，-r表示恢复文件
+       单独取出备份文件中某些文件
+       	restore -if home.dump 
+       	restore>cd /home/tmp
+       	restore>add a.txt b.txt #加入要取出的文件列表，可用delete由列表中删除文件名
+       	restore>extract #抽出列表中的文件
+       	restore>quit     
+       	备份部分目录或文件，-u则无法使用，-u主要让dump针对分区文件系统，而非部分目录或文件
+ 使用cp和dd做备份
+  	 cp -a 来源A 目的B　　＃-a相当于执行-d(保持链接文件，不做参考文件的复制) -p(保持文件权限，拥有者，文     件时间等属性) -R(以递归的方式)
+  	 使用dd
+  	 dd是一种以低阶(以扇区对扇区的方式进行复制)的方式复制文件或转换原始数据的工具     
+  	 dd 选项	
+  	     if=来源文件或设备 #指定文件或设备读取数据
+  	     of=目标文件或设备 #将数据写入指定的文件或设备
+  	     ibs=字节数 #每次读取的字节数
+  	     obs=字节数 #每次写入的字节数
+  	     bs=字节数  #同时指定ibs或obs都是相同的字节数
+  	     cbs=字节数 #每次转换的字节数
+  	     conv=关键词 #以逗号分隔的关键词所指定的方式来转换文件
+  	     count=区块数 #只作用count指定的区域数
+  	     关键词
+  	     	ascii   由EBCAIC转至ASCII
+  	     	ebcdic  由ASCII转至EBCDIC 
+  	     	ibm     由ASCII转至alternated ebcdic
+  	     	block   作为终止符的newline换成空格符，直至填满cbs指定的大小为止
+  	     	unblock 将cbs指定大小的区域中所有结束的空格符删除，并转换成newline字符
+  	     	lcase   将大写字符转换为小写
+  	     	notrunc 不间断输出
+  	     	ncase   将小写字符转换为大写
+  	     	swab    交换输入的字节数据
+  	     	noerror 如果过程中发生错误，仍然继续执行
+  	     	sync    将输入数据的区域以NULL字符填满，直至ibs指定的大小为止;如果和block或unblock合用
+  	     	        会改由空格符填充
+  	     	注:在指定“if=来源文件和of=目的文件”，如弄反或弄错来源文件、目的文件，硬盘数据肯能全部丢失 
+  	   复制硬盘分区  dd if=/dev/sda1 of=/dev/sdb1 bs=4096 conv=notrunc,noerror
+  	   分区存成镜像文件 dd if=/dev/sda1 of=/dev/sda1.image bs=4096 conv=notrunc,noerror
+  	   复制整个硬盘   dd if=/dev/sda of=/dev/sdb bs=4096 conv=notrunc,noerror
+  	   备份MBR扇区    dd if=/dev/sda1 of=/bk/sba-mbr.image bs=512 count=1       
+  	   备份光盘内容    dd if=/dev/cdrom of=/dev/mycd.iso bs=2048 conv=sync,notrunc	  
+  	   安全删除硬盘全部内容 dd if=/dev/urandom of=/dev/sdb or dd if=/dev/zero of=/dev/sdb 
+  	   检查硬盘内容，确认删除 dd if=/dev/sdb | hexdump -C #-C以16进制和对应的ASCII字符两种字段来显示  
+ 使用光盘做备份   
+ 	 mkisofs -o 备份文件名.iso 备份目录
+ 	 扫描光驱使用的信道 cdrecord -scanbus
+ 	 将iso文件刻录到光盘 cdrecord dev=2,0,0 -v tmp.iso
+ 	 退盘  eject /dev/cdrom 
+ 	 刻录目录到DVD growisofs  -Z  /dev/scd0 -R -J /root/tmp #-Z指定要初次刻录的设备文件名,-R和-J使用                                                             #的Rock-Ridge和Joliet格式
+ 	 刻录iso到DVD  growisofs -dvd-compat -Z  /dev/scd0=test.iso
+ 使用rsync备份
+     用来取代rcp的工具，使用所谓的"rsync算法"。提供一个非常快速的文件传输方法，使local和远程两部主机之间     的文件达到同步，主要传送两个文件的改动部分，而非每次都全部传送
+     简单定义，如果一台主机用rsync daemon模式，那么称这台机器为rsync Server或者说这台主机是一台备份主机
+ 	 并且会开启873的端口，等待client端来连接，第一次连通完成整份文件传输，下一次就只传送两个文件之间改动     的部分
+ 	 rsync server端要设定备份目录区，设定主要配置文件/etc/rsyncd.conf，设定密码文件/etc/rsyncd.secrets
+ 	  /etc/rsyncd.conf
+ 			log file = /var/log/rsyncd.log
+ 			[mch1]
+ 			  path = /bk/server/mch1_backup
+ 			  auth users =mch1_backup
+ 			  uid = root
+ 			  gid = root
+ 			  secrets files = /etc/rsyncd.secrets
+ 			  read only = no 
+ 	   /etc/rsyncd.secrets，并且密码文件的文件属性设为root拥有，且权限要设为600，否则无法备份成功
+ 	   每一行的格式为“账号:密码”
+ 	   rsync client设定密码文件内容只需含有一行账户密码即可，而且需要在/root目录下，且权限设为600
+ 	
